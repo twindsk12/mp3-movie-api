@@ -45,7 +45,7 @@ Send a POST request to `/movies/process` with this JSON body:
 }
 ```
 
-##Expected Result:
+# Expected Result:
 The sample dataset goes from 20 rows to 16 with 4 rows being removed during the cleaning processs.
 
 
