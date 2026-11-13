@@ -15,6 +15,7 @@ from data_pipeline import (
 from src import (
     HealthResponse,
     MovieStorage,
+    MovieCache,
     setup_logging,
 )
 
@@ -36,6 +37,7 @@ logger = logging.getLogger(__name__)
 app = FastAPI(title="Data Processing API", version="1.0.0")
 app.middleware("http")(log_requests)
 storage = MovieStorage()
+cache = MovieCache()
 
 
 @app.get("/health", response_model=HealthResponse)
@@ -85,6 +87,7 @@ async def upload_movies(file: UploadFile = File(...)):
     df = df[MOVIE_COLUMNS]
 
     storage.save(df)
+    cache.invalidate()
 
     logger.info(
         "Uploaded movies: filename=%s, rows=%s",
@@ -106,8 +109,29 @@ def get_movies(limit: int = Query(default=100, ge=1)):
     # Return {"data": ..., "total_rows": ...}.
     # If empty, return {"data": [], "total_rows": 0}.
     # Log the row count at INFO.
+
+    # TODO 1: Look up the response using cache.get(limit).
+    # If it is not None, log the cache hit at INFO and return it.
+
+    # Keep Part 1's SQL retrieval, total count, and response construction here.
+
+    # TODO 2: Before the existing return, cache the complete response
+    # using cache.set(limit, response).
+    # Keep the existing row-count log and return.
+
+    cached = cache.get(limit)
+
+    if cached is not None:
+        logger.info("Retrieved movies: returned_rows=%s", len(cached["data"]))
+        return cached
+
     records = storage.select_columns(MOVIE_COLUMNS, limit=limit)
     total_rows = storage.count_movies()
+
+    response = {
+        "data": records,
+        "total_rows": total_rows
+    }
 
     logger.info(
         "Retrieved movies: returned_rows=%s, total_rows=%s",
@@ -115,10 +139,11 @@ def get_movies(limit: int = Query(default=100, ge=1)):
         total_rows
     )
 
-    return {
-        "data": records,
-        "total_rows": total_rows
-    }
+    cache.set(limit, response)
+
+    return response
+
+
 
 @app.get("/movies/search", response_model=list[dict])
 def query_movies(
@@ -210,6 +235,7 @@ def process_movies(config: ProcessConfig):
         ) from error
 
     storage.save(processed_df)
+    cache.invalidate()
 
     logger.info(
         "Processed movies: validation_removed=%s, "
