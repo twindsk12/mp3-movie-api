@@ -49,6 +49,7 @@ Send a POST request to `/movies/process` with this JSON body:
 The sample dataset goes from 20 rows to 16 with 4 rows being removed during the cleaning processs.
 
 
+```json
 {
   "validation_rows_removed": 0,
   "cleaning_report": {
@@ -59,3 +60,4 @@ The sample dataset goes from 20 rows to 16 with 4 rows being removed during the 
     "columns_after": 4,
     "columns_removed": 0
   }
+```
